@@ -81,13 +81,15 @@ void loop() {
 void encoder(void *param) {
 	while(true) {
 		//counter++;
-
+        for (int i = 0; i < 40; i++){
         digitalWrite(D0, HIGH);
         
 		// Delay so we're called every 10 milliseconds (100 times per second)
 		os_thread_delay_until(&lastThreadTime, tRef);
 		digitalWrite(D0, LOW);
 		os_thread_delay_until(&lastThreadTime, 2*tRef);
+        }
+        os_thread_delay_until(&lastThreadTime, 1000);
 	}
 	// You must not return from the thread function
 }
@@ -137,7 +139,8 @@ void isr(){
         if(bitPosition == 7){
             if(lastBit) byteToStore = byteToStore | 0b00000001;
             receivedFrame[frameCounter] = byteToStore;
-            Serial.printlnf("Byte stored %d", byteToStore);
+            frameCounter++;
+            // Serial.printlnf("Byte stored %d", byteToStore);
             byteToStore = 0b00000000;
             bitPosition = 0;
         }
@@ -177,7 +180,8 @@ void isr(){
         if(bitPosition == 7){
             if(lastBit) byteToStore = byteToStore | 0b00000001;
             receivedFrame[frameCounter] = byteToStore;
-            Serial.printlnf("Byte stored %d", byteToStore);
+            frameCounter++;
+            // Serial.printlnf("Byte stored %d", byteToStore);
             byteToStore = 0b00000000;
             bitPosition = 0;
         }
