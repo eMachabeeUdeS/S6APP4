@@ -82,7 +82,8 @@ void loop() {
 void encoder(void *param) {
 	while(true) {
 		//counter++;
-        for (int i = 0; i < 40; i++){
+        os_thread_delay_until(&lastThreadTime, 1000);
+        for (int i = 0; i < 40*8; i++){
         digitalWrite(D0, HIGH);
         
 		// Delay so we're called every 10 milliseconds (100 times per second)
@@ -90,7 +91,7 @@ void encoder(void *param) {
 		digitalWrite(D0, LOW);
 		os_thread_delay_until(&lastThreadTime, 2*tRef);
         }
-        os_thread_delay_until(&lastThreadTime, 1000);
+        
 	}
 	// You must not return from the thread function
 }
