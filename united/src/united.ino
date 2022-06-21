@@ -31,6 +31,17 @@ const uint8_t end = 0b01111110;
 
 uint8_t frametosend[80] = {0};  // Une trame a une longueur de 80 octets de long
 
+// Variables pour l'ISR de réception
+const int tRef = 5;
+bool lastBit = false;           // On commence toujours en assumant que avant c'était un 0
+system_tick_t timer1 = 0;
+uint8_t bitPosition = 0;        // Position du bit actuel dans un octet
+uint8_t byteToStore = 0b00000000;        // Octet à stocker
+
+// Variables pour la réception
+uint8_t receivedFrame[80] = {0};    // Trame reçue
+uint8_t frameCounter = 0;           // Position dans la trame
+
 volatile int counter = 0;
 unsigned long lastReport = 0;
 system_tick_t lastThreadTime = 0;
@@ -59,7 +70,7 @@ void loop() {
 		lastReport = millis();
 
 		//Serial.printlnf("counter=%d", counter);
-		Serial.printlnf("Pulse length: %d", lastPulse);
+		Serial.printlnf("Pulse length: %i", lastBit);
 	}
 }
 
@@ -71,9 +82,9 @@ void encoder(void *param) {
         digitalWrite(D0, HIGH);
         
 		// Delay so we're called every 10 milliseconds (100 times per second)
-		os_thread_delay_until(&lastThreadTime, 5);
+		os_thread_delay_until(&lastThreadTime, tRef);
 		digitalWrite(D0, LOW);
-		os_thread_delay_until(&lastThreadTime, 5);
+		os_thread_delay_until(&lastThreadTime, 2*tRef);
 	}
 	// You must not return from the thread function
 }
@@ -88,15 +99,86 @@ void decoder(void *param) {
 }
 
 void isr(){
-    if (!measuring){
-        lastPulseTime = millis();
-        measuring = true;
+    system_tick_t time = millis() - timer1;
+    timer1 = millis();
+    if (time <= tRef){
+        // Sauvegarder le bit courant
+        if(lastBit){
+            if(bitPosition == 0){
+                byteToStore = byteToStore | 0b10000000;
+                bitPosition++;
+            }
+            if(bitPosition == 1){
+                byteToStore = byteToStore | 0b01000000;
+                bitPosition++;
+            }
+            if(bitPosition == 2){
+                byteToStore = byteToStore | 0b00100000;
+                bitPosition++;
+            }
+            if(bitPosition == 3){
+                byteToStore = byteToStore | 0b00010000;
+                bitPosition++;
+            }
+            if(bitPosition == 4){
+                byteToStore = byteToStore | 0b00001000;
+                bitPosition++;
+            }
+            if(bitPosition == 5){
+                byteToStore = byteToStore | 0b00000100;
+                bitPosition++;
+            }
+            if(bitPosition == 6){
+                byteToStore = byteToStore | 0b00000010;
+                bitPosition++;
+            }
+            if(bitPosition == 7){
+                byteToStore = byteToStore | 0b00000001;
+                receivedFrame[frameCounter] = byteToStore;
+                byteToStore = 0b00000000;
+                bitPosition = 0;
+            }
+        }
     }
-    else
-    {
-        lastPulse = millis() - lastPulseTime;
-        measuring = false;
+    else if(time >= tRef && time <= 3*tRef){
+        // Inverser le lastBit
+        lastBit = !lastBit;
+        // Sauvegarder le bit courant
+        if(lastBit){
+            if(bitPosition == 0){
+                byteToStore = byteToStore | 0b10000000;
+                bitPosition++;
+            }
+            if(bitPosition == 1){
+                byteToStore = byteToStore | 0b01000000;
+                bitPosition++;
+            }
+            if(bitPosition == 2){
+                byteToStore = byteToStore | 0b00100000;
+                bitPosition++;
+            }
+            if(bitPosition == 3){
+                byteToStore = byteToStore | 0b00010000;
+                bitPosition++;
+            }
+            if(bitPosition == 4){
+                byteToStore = byteToStore | 0b00001000;
+                bitPosition++;
+            }
+            if(bitPosition == 5){
+                byteToStore = byteToStore | 0b00000100;
+                bitPosition++;
+            }
+            if(bitPosition == 6){
+                byteToStore = byteToStore | 0b00000010;
+                bitPosition++;
+            }
+            if(bitPosition == 7){
+                byteToStore = byteToStore | 0b00000001;
+                receivedFrame[frameCounter] = byteToStore;
+                byteToStore = 0b00000000;
+                bitPosition = 0;
+            }
+        }
     }
-    
-    
 }
