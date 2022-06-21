@@ -22,7 +22,8 @@ const uint8_t start = 0b01111110;
 const uint8_t type_flags = 0b11111111;
 uint8_t payloadlength = 0;
 uint8_t payload[73] = {0};
-uint8_t crc16 = 0;
+uint8_t crc16_1 = 0;
+uint8_t crc16_2 = 0;
 
 const uint8_t end = 0b01111110;
 
@@ -106,78 +107,44 @@ void decoder(void *param) {
 void isr(){
     system_tick_t time = millis() - timer1;
     timer1 = millis();
-    if (time <= tRef){
-        // Sauvegarder le bit courant
-        if(bitPosition == 0){
-            if(lastBit) byteToStore = byteToStore | 0b10000000;
-            bitPosition++;
-        }
-        if(bitPosition == 1){
-            if(lastBit) byteToStore = byteToStore | 0b01000000;
-            bitPosition++;
-        }
-        if(bitPosition == 2){
-            if(lastBit) byteToStore = byteToStore | 0b00100000;
-            bitPosition++;
-        }
-        if(bitPosition == 3){
-            if(lastBit) byteToStore = byteToStore | 0b00010000;
-            bitPosition++;
-        }
-        if(bitPosition == 4){
-            if(lastBit) byteToStore = byteToStore | 0b00001000;
-            bitPosition++;
-        }
-        if(bitPosition == 5){
-            if(lastBit) byteToStore = byteToStore | 0b00000100;
-            bitPosition++;
-        }
-        if(bitPosition == 6){
-            if(lastBit) byteToStore = byteToStore | 0b00000010;
-            bitPosition++;
-        }
-        if(bitPosition == 7){
-            if(lastBit) byteToStore = byteToStore | 0b00000001;
-            receivedFrame[frameCounter] = byteToStore;
-            frameCounter++;
-            // Serial.printlnf("Byte stored %d", byteToStore);
-            byteToStore = 0b00000000;
-            bitPosition = 0;
-        }
-    }
-    else if(time >= tRef && time <= 3*tRef){
+    //if (time <= tRef+1){
+        // Ne rien faire et ne pas inverser l'ancien bit, non compilé
+    //}
+    // else if(time >= tRef-1 && time <= 3*tRef){
+    if(time >= tRef-1 && time <= 3*tRef){
         // Inverser le lastBit
         lastBit = !lastBit;
-        // Sauvegarder le bit courant
+}
+            // Sauvegarder le bit courant
         if(bitPosition == 0){
             if(lastBit) byteToStore = byteToStore | 0b10000000;
             bitPosition++;
         }
-        if(bitPosition == 1){
+        else if(bitPosition == 1){
             if(lastBit) byteToStore = byteToStore | 0b01000000;
             bitPosition++;
         }
-        if(bitPosition == 2){
+        else if(bitPosition == 2){
             if(lastBit) byteToStore = byteToStore | 0b00100000;
             bitPosition++;
         }
-        if(bitPosition == 3){
+        else if(bitPosition == 3){
             if(lastBit) byteToStore = byteToStore | 0b00010000;
             bitPosition++;
         }
-        if(bitPosition == 4){
+        else if(bitPosition == 4){
             if(lastBit) byteToStore = byteToStore | 0b00001000;
             bitPosition++;
         }
-        if(bitPosition == 5){
+        else if(bitPosition == 5){
             if(lastBit) byteToStore = byteToStore | 0b00000100;
             bitPosition++;
         }
-        if(bitPosition == 6){
+        else if(bitPosition == 6){
             if(lastBit) byteToStore = byteToStore | 0b00000010;
             bitPosition++;
         }
-        if(bitPosition == 7){
+        else if(bitPosition == 7){
             if(lastBit) byteToStore = byteToStore | 0b00000001;
             receivedFrame[frameCounter] = byteToStore;
             frameCounter++;
@@ -185,5 +152,5 @@ void isr(){
             byteToStore = 0b00000000;
             bitPosition = 0;
         }
-    }
+   
 }
