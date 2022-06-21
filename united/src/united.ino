@@ -70,7 +70,10 @@ void loop() {
 		lastReport = millis();
 
 		//Serial.printlnf("counter=%d", counter);
-		Serial.printlnf("Pulse length: %i", lastBit);
+		//Serial.printlnf("Pulse length: %i", lastBit);
+        
+        for(int loop = 0; loop < 80; loop++)
+            Serial.printlnf("byte[%d]: %d ", loop, receivedFrame[loop]);
 	}
 }
 
@@ -103,82 +106,80 @@ void isr(){
     timer1 = millis();
     if (time <= tRef){
         // Sauvegarder le bit courant
-        if(lastBit){
-            if(bitPosition == 0){
-                byteToStore = byteToStore | 0b10000000;
-                bitPosition++;
-            }
-            if(bitPosition == 1){
-                byteToStore = byteToStore | 0b01000000;
-                bitPosition++;
-            }
-            if(bitPosition == 2){
-                byteToStore = byteToStore | 0b00100000;
-                bitPosition++;
-            }
-            if(bitPosition == 3){
-                byteToStore = byteToStore | 0b00010000;
-                bitPosition++;
-            }
-            if(bitPosition == 4){
-                byteToStore = byteToStore | 0b00001000;
-                bitPosition++;
-            }
-            if(bitPosition == 5){
-                byteToStore = byteToStore | 0b00000100;
-                bitPosition++;
-            }
-            if(bitPosition == 6){
-                byteToStore = byteToStore | 0b00000010;
-                bitPosition++;
-            }
-            if(bitPosition == 7){
-                byteToStore = byteToStore | 0b00000001;
-                receivedFrame[frameCounter] = byteToStore;
-                byteToStore = 0b00000000;
-                bitPosition = 0;
-            }
+        if(bitPosition == 0){
+            if(lastBit) byteToStore = byteToStore | 0b10000000;
+            bitPosition++;
+        }
+        if(bitPosition == 1){
+            if(lastBit) byteToStore = byteToStore | 0b01000000;
+            bitPosition++;
+        }
+        if(bitPosition == 2){
+            if(lastBit) byteToStore = byteToStore | 0b00100000;
+            bitPosition++;
+        }
+        if(bitPosition == 3){
+            if(lastBit) byteToStore = byteToStore | 0b00010000;
+            bitPosition++;
+        }
+        if(bitPosition == 4){
+            if(lastBit) byteToStore = byteToStore | 0b00001000;
+            bitPosition++;
+        }
+        if(bitPosition == 5){
+            if(lastBit) byteToStore = byteToStore | 0b00000100;
+            bitPosition++;
+        }
+        if(bitPosition == 6){
+            if(lastBit) byteToStore = byteToStore | 0b00000010;
+            bitPosition++;
+        }
+        if(bitPosition == 7){
+            if(lastBit) byteToStore = byteToStore | 0b00000001;
+            receivedFrame[frameCounter] = byteToStore;
+            Serial.printlnf("Byte stored %d", byteToStore);
+            byteToStore = 0b00000000;
+            bitPosition = 0;
         }
     }
     else if(time >= tRef && time <= 3*tRef){
         // Inverser le lastBit
         lastBit = !lastBit;
         // Sauvegarder le bit courant
-        if(lastBit){
-            if(bitPosition == 0){
-                byteToStore = byteToStore | 0b10000000;
-                bitPosition++;
-            }
-            if(bitPosition == 1){
-                byteToStore = byteToStore | 0b01000000;
-                bitPosition++;
-            }
-            if(bitPosition == 2){
-                byteToStore = byteToStore | 0b00100000;
-                bitPosition++;
-            }
-            if(bitPosition == 3){
-                byteToStore = byteToStore | 0b00010000;
-                bitPosition++;
-            }
-            if(bitPosition == 4){
-                byteToStore = byteToStore | 0b00001000;
-                bitPosition++;
-            }
-            if(bitPosition == 5){
-                byteToStore = byteToStore | 0b00000100;
-                bitPosition++;
-            }
-            if(bitPosition == 6){
-                byteToStore = byteToStore | 0b00000010;
-                bitPosition++;
-            }
-            if(bitPosition == 7){
-                byteToStore = byteToStore | 0b00000001;
-                receivedFrame[frameCounter] = byteToStore;
-                byteToStore = 0b00000000;
-                bitPosition = 0;
-            }
+        if(bitPosition == 0){
+            if(lastBit) byteToStore = byteToStore | 0b10000000;
+            bitPosition++;
+        }
+        if(bitPosition == 1){
+            if(lastBit) byteToStore = byteToStore | 0b01000000;
+            bitPosition++;
+        }
+        if(bitPosition == 2){
+            if(lastBit) byteToStore = byteToStore | 0b00100000;
+            bitPosition++;
+        }
+        if(bitPosition == 3){
+            if(lastBit) byteToStore = byteToStore | 0b00010000;
+            bitPosition++;
+        }
+        if(bitPosition == 4){
+            if(lastBit) byteToStore = byteToStore | 0b00001000;
+            bitPosition++;
+        }
+        if(bitPosition == 5){
+            if(lastBit) byteToStore = byteToStore | 0b00000100;
+            bitPosition++;
+        }
+        if(bitPosition == 6){
+            if(lastBit) byteToStore = byteToStore | 0b00000010;
+            bitPosition++;
+        }
+        if(bitPosition == 7){
+            if(lastBit) byteToStore = byteToStore | 0b00000001;
+            receivedFrame[frameCounter] = byteToStore;
+            Serial.printlnf("Byte stored %d", byteToStore);
+            byteToStore = 0b00000000;
+            bitPosition = 0;
         }
     }
 }
