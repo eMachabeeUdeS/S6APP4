@@ -36,8 +36,9 @@ const int frameSize = 3;
 uint8_t frametosend[frameSize] = {0};  // Une trame a une longueur de 80 octets de long
 
 // Variables pour l'ISR de réception
-const int tRef = 5;
+const int tRef = 200;
 bool lastBit = false;           // On commence toujours en assumant que avant c'était un 0
+system_tick_t timer2 = 0;     // Temps avant, pour comparer et skipper des fronts montants inutiles
 system_tick_t timer1 = 0;
 uint8_t bitPosition = 0;        // Position du bit actuel dans un octet
 uint8_t byteToStore = 0b00000000;        // Octet à stocker
@@ -55,6 +56,8 @@ bool measuring = false;
 unsigned long lastPulseTime = 0;
 unsigned long lastPulse = 0;
 
+void addBit();
+
 void framebuilder(uint8_t* frame)
 {
     frame[0] = preambule;
@@ -67,9 +70,9 @@ void setup() {
 	pinMode(OUTPUTPIN, OUTPUT);
     digitalWrite(OUTPUTPIN, HIGH);
 	pinMode(INPUTPIN, INPUT);
-    frametosend[0] = preambule;
-    frametosend[1] = start;
-    frametosend[2] = type_flags;
+    frametosend[0] = preambule; //85
+    frametosend[1] = start;     //126
+    frametosend[2] = type_flags;//255
 	attachInterrupt(INPUTPIN, isr, CHANGE, 0);
 }
 
@@ -80,8 +83,8 @@ void loop() {
 		//Serial.printlnf("counter=%d", counter);
 		//Serial.printlnf("Pulse length: %i", lastBit);
         
-        for(int loop = 0; loop < 3; loop++)
-            Serial.printlnf("byte[%d]: %d ", loop, receivedFrame[loop]);
+        //for(int loop = 0; loop < 3; loop++)
+        //    Serial.printlnf("byte[%d]: %d ", loop, receivedFrame[loop]);
 	}
 }
 
@@ -117,7 +120,7 @@ void encoder(void *param) {
             // Serial.printf("\n");
         }
         digitalWrite(OUTPUTPIN, HIGH);
-        os_thread_delay_until(&lastThreadTime, 1000);
+        os_thread_delay_until(&lastThreadTime, 3000);
 
 		// //counter++;
         // os_thread_delay_until(&lastThreadTime, 1000);
@@ -142,17 +145,7 @@ void decoder(void *param) {
     }
 }
 
-void isr(){
-    system_tick_t time = millis() - timer1;
-    timer1 = millis();
-    //if (time <= tRef+1){
-        // Ne rien faire et ne pas inverser l'ancien bit, non compilé
-    //}
-    // else if(time >= tRef-1 && time <= 3*tRef){
-    if(time >= tRef-1 && time <= 3*tRef){
-        // Inverser le lastBit
-        lastBit = !lastBit;
-    }
+void addBit(){
     // Sauvegarder le bit courant
     if(bitPosition == 0){
         if(lastBit) byteToStore = byteToStore | 0b10000000;
@@ -175,7 +168,7 @@ void isr(){
         bitPosition++;
     }
     else if(bitPosition == 5){
-        if(lastBit) byteToStore = byteToStore | 0b00000100;
+        if(lastBit) byteToStore = byteToStore | 0b00000100 ;
         bitPosition++;
     }
     else if(bitPosition == 6){
@@ -186,8 +179,29 @@ void isr(){
         if(lastBit) byteToStore = byteToStore | 0b00000001;
         receivedFrame[frameCounter] = byteToStore;
         frameCounter++;
-        // Serial.printlnf("Byte stored %d", byteToStore);
+        Serial.printf("\n");
+        Serial.printlnf("Byte stored %d", byteToStore);
         byteToStore = 0b00000000;
         bitPosition = 0;
+    }
+}
+
+void isr(){
+    system_tick_t time = millis() - timer1;
+    system_tick_t time2 = millis() - timer2;
+//    Serial.printlnf("Time: %d, Time2: %d", time, time2);
+    if (time <= 1.5*tRef && time2 <= 1.5*tRef) timer1 = millis();
+    else if (time <= 1.5*tRef && time2 >= 1.5*tRef){
+        addBit();
+        timer1 = millis();
+        timer2 = millis();
+        Serial.printf("LastBit: %d", lastBit);
+    }
+    else if (time >= 1.5*tRef){
+        lastBit = !lastBit;
+        addBit();
+        timer1 = millis();
+        timer2 = millis();
+        Serial.printf("LastBit: %d", lastBit);
     }
 }
