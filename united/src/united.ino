@@ -36,8 +36,8 @@ const int frameSize = 3;
 uint8_t frametosend[frameSize] = {0};  // Une trame a une longueur de 80 octets de long
 
 // Variables pour l'ISR de réception
-const int tRef = 200;
-bool lastBit = false;           // On commence toujours en assumant que avant c'était un 0
+const int tRef = 50;
+bool lastBit = true;           // On commence toujours en assumant que avant c'était un 0
 system_tick_t timer2 = 0;     // Temps avant, pour comparer et skipper des fronts montants inutiles
 system_tick_t timer1 = 0;
 uint8_t bitPosition = 0;        // Position du bit actuel dans un octet
@@ -192,16 +192,16 @@ void isr(){
 //    Serial.printlnf("Time: %d, Time2: %d", time, time2);
     if (time <= 1.5*tRef && time2 <= 1.5*tRef) timer1 = millis();
     else if (time <= 1.5*tRef && time2 >= 1.5*tRef){
+        // Serial.printf("%d", lastBit);
         addBit();
         timer1 = millis();
         timer2 = millis();
-        Serial.printf("LastBit: %d", lastBit);
     }
     else if (time >= 1.5*tRef){
         lastBit = !lastBit;
+        // Serial.printf("%d", lastBit);
         addBit();
         timer1 = millis();
         timer2 = millis();
-        Serial.printf("LastBit: %d", lastBit);
     }
 }
