@@ -95,16 +95,18 @@ void encoder(void *param) {
             Serial.printlnf("START");
             for (uint8_t j = 0; j < 8; j++){
                 uint8_t cc = frametosend[i] & comp;
-                Serial.printlnf("CC: %i", cc);
+                // Serial.printlnf("CC: %i", cc);
                 if (cc){
-                    Serial.printlnf("HIGH");
+                    // Serial.printlnf("HIGH");
+                    // Serial.printf("1");
                     digitalWrite(OUTPUTPIN, HIGH);
                     os_thread_delay_until(&lastThreadTime, tRef);
                     digitalWrite(OUTPUTPIN, LOW);
                     os_thread_delay_until(&lastThreadTime, tRef);
                 }
                 else{
-                    Serial.printlnf("LOW");
+                    // Serial.printlnf("LOW");
+                    // Serial.printf("0");
                     digitalWrite(OUTPUTPIN, LOW);
                     os_thread_delay_until(&lastThreadTime, tRef);
                     digitalWrite(OUTPUTPIN, HIGH);
@@ -112,6 +114,7 @@ void encoder(void *param) {
                 }
                 comp = comp>>1; // Bitshift à gauche de 1
             }
+            // Serial.printf("\n");
         }
         digitalWrite(OUTPUTPIN, HIGH);
         os_thread_delay_until(&lastThreadTime, 1000);
