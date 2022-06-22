@@ -10,6 +10,8 @@
 SYSTEM_THREAD(ENABLED);
 
 #define CRC16 0x8005
+#define INPUTPIN D12
+#define OUTPUTPIN D0
 
 void threadFunction(void *param);
 
@@ -30,7 +32,8 @@ const uint8_t end = 0b01111110;
 // Le CRC16 est 16 bits, donc 2 octets
 // Charge utile maximale de 73 octets
 
-uint8_t frametosend[80] = {0};  // Une trame a une longueur de 80 octets de long
+const int frameSize = 3;
+uint8_t frametosend[frameSize] = {0};  // Une trame a une longueur de 80 octets de long
 
 // Variables pour l'ISR de réception
 const int tRef = 5;
@@ -55,15 +58,19 @@ unsigned long lastPulse = 0;
 void framebuilder(uint8_t* frame)
 {
     frame[0] = preambule;
-    frame[1] = start;
-    frame[2] = type_flags;
+    //frame[1] = start;
+    //frame[2] = type_flags;
 }
 
 void setup() {
 	Serial.begin(9600);
-	pinMode(D0, OUTPUT);
-	pinMode(D12, INPUT);
-	attachInterrupt(D12, isr, CHANGE, 0);
+	pinMode(OUTPUTPIN, OUTPUT);
+    digitalWrite(OUTPUTPIN, HIGH);
+	pinMode(INPUTPIN, INPUT);
+    frametosend[0] = preambule;
+    frametosend[1] = start;
+    frametosend[2] = type_flags;
+	attachInterrupt(INPUTPIN, isr, CHANGE, 0);
 }
 
 void loop() {
@@ -73,25 +80,52 @@ void loop() {
 		//Serial.printlnf("counter=%d", counter);
 		//Serial.printlnf("Pulse length: %i", lastBit);
         
-        for(int loop = 0; loop < 80; loop++)
-            Serial.printlnf("byte[%d]: %d ", loop, receivedFrame[loop]);
+        //for(int loop = 0; loop < 80; loop++)
+        //    Serial.printlnf("byte[%d]: %d ", loop, receivedFrame[loop]);
 	}
 }
 
 
 void encoder(void *param) {
+    os_thread_delay_until(&lastThreadTime, 1000);
+    digitalWrite(OUTPUTPIN, HIGH);
 	while(true) {
-		//counter++;
-        os_thread_delay_until(&lastThreadTime, 1000);
-        for (int i = 0; i < 40*8; i++){
-        digitalWrite(D0, HIGH);
-        
-		// Delay so we're called every 10 milliseconds (100 times per second)
-		os_thread_delay_until(&lastThreadTime, tRef);
-		digitalWrite(D0, LOW);
-		os_thread_delay_until(&lastThreadTime, 2*tRef);
+        for (int i = 0; i < frameSize; i++){
+            uint8_t comp = 0b10000000;
+            Serial.printlnf("START");
+            for (uint8_t j = 0; j < 8; j++){
+                uint8_t cc = frametosend[i] & comp;
+                Serial.printlnf("CC: %i", cc);
+                if (cc){
+                    Serial.printlnf("HIGH");
+                    digitalWrite(OUTPUTPIN, HIGH);
+                    os_thread_delay_until(&lastThreadTime, tRef);
+                    digitalWrite(OUTPUTPIN, LOW);
+                    os_thread_delay_until(&lastThreadTime, tRef);
+                }
+                else{
+                    Serial.printlnf("LOW");
+                    digitalWrite(OUTPUTPIN, LOW);
+                    os_thread_delay_until(&lastThreadTime, tRef);
+                    digitalWrite(OUTPUTPIN, HIGH);
+                    os_thread_delay_until(&lastThreadTime, tRef);
+                }
+                comp = comp>>1; // Bitshift à gauche de 1
+            }
         }
+        digitalWrite(OUTPUTPIN, HIGH);
+        os_thread_delay_until(&lastThreadTime, 1000);
+
+		// //counter++;
+        // os_thread_delay_until(&lastThreadTime, 1000);
+        // for (int i = 0; i < 40*8; i++){
+        // digitalWrite(D0, HIGH);
         
+		// // Delay so we're called every 10 milliseconds (100 times per second)
+		// os_thread_delay_until(&lastThreadTime, tRef);
+		// digitalWrite(D0, LOW);
+		// os_thread_delay_until(&lastThreadTime, 2*tRef);
+        // }
 	}
 	// You must not return from the thread function
 }
