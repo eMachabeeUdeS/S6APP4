@@ -9,9 +9,10 @@
 
 SYSTEM_THREAD(ENABLED);
 
-#define CRC16 0x8005
-#define INPUTPIN D12
-#define OUTPUTPIN D0
+#define CRC16           0x8005
+#define INPUTPIN        D12
+#define OUTPUTPIN       D0
+#define MAX_FRAME_SIZE  80
 
 void threadFunction(void *param);
 
@@ -32,11 +33,8 @@ const uint8_t end = 0b01111110;
 // Le CRC16 est 16 bits, donc 2 octets
 // Charge utile maximale de 73 octets
 
-const int frameSize = 3;
-uint8_t frametosend[frameSize] = {0};  // Une trame a une longueur de 80 octets de long
-
 // Variables pour l'ISR de réception
-const int tRef = 50;
+const int tRef = 5;
 bool lastBit = true;           // On commence toujours en assumant que avant c'était un 0
 system_tick_t timer2 = 0;     // Temps avant, pour comparer et skipper des fronts montants inutiles
 system_tick_t timer1 = 0;
@@ -58,11 +56,29 @@ unsigned long lastPulse = 0;
 
 void addBit();
 
-void framebuilder(uint8_t* frame)
+/**
+ * @brief Construit une trame à envoyer
+ * 
+ * @param frame Pointeur vers la trame
+ * @param size Taille de la charge utile, maximum 73
+ * @return int Taille de la trame complète
+ */
+int framebuilder(uint8_t* frame, int size)
 {
     frame[0] = preambule;
-    //frame[1] = start;
-    //frame[2] = type_flags;
+    frame[1] = start;
+    frame[2] = type_flags;
+    frame[3] = (uint8_t)size;
+    for (int i = 3; i < size; i++){
+        frame[i+4] = i;
+    }
+    /***** METTRE LE RÉSULTAT DU CRC16 EN 2 BYTES ICI *****/
+    frame[size + 4] = 0xFF;   // CORALIE CE SONT LES 2 BYTES POUR STOCKER LE CRC16
+    frame[size + 5] = 0xFF;   // CORALIE CE SONT LES 2 BYTES POUR STOCKER LE CRC16
+    /***** FIN DU RÉSULTAT DU CRC16 *****/
+    frame[size + 6] = start;
+
+    return size + 7;
 }
 
 void setup() {
@@ -70,9 +86,9 @@ void setup() {
 	pinMode(OUTPUTPIN, OUTPUT);
     digitalWrite(OUTPUTPIN, HIGH);
 	pinMode(INPUTPIN, INPUT);
-    frametosend[0] = preambule; //85
-    frametosend[1] = start;     //126
-    frametosend[2] = type_flags;//255
+    // frametosend[0] = preambule; //85
+    // frametosend[1] = start;     //126
+    // frametosend[2] = type_flags;//255
 	attachInterrupt(INPUTPIN, isr, CHANGE, 0);
 }
 
@@ -91,6 +107,10 @@ void loop() {
 
 void encoder(void *param) {
     os_thread_delay_until(&lastThreadTime, 1000);
+
+    // Variables pour la transmission
+    uint8_t frametosend[MAX_FRAME_SIZE] = {0};  // Une trame a une longueur de 80 octets de long
+    int frameSize = framebuilder(frametosend, 73);
     digitalWrite(OUTPUTPIN, HIGH);
 	while(true) {
         for (int i = 0; i < frameSize; i++){
@@ -179,8 +199,8 @@ void addBit(){
         if(lastBit) byteToStore = byteToStore | 0b00000001;
         receivedFrame[frameCounter] = byteToStore;
         frameCounter++;
-        Serial.printf("\n");
-        Serial.printlnf("Byte stored %d", byteToStore);
+        // Serial.printf("\n");
+        // Serial.printlnf("Byte stored %d", byteToStore);
         byteToStore = 0b00000000;
         bitPosition = 0;
     }
