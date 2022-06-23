@@ -25,8 +25,7 @@ const uint8_t start = 0b01111110;
 const uint8_t type_flags = 0b11111111;
 uint8_t payloadlength = 0;
 uint8_t payload[73] = {0};
-uint8_t crc16_1 = 0;
-uint8_t crc16_2 = 0;
+
 
 const uint8_t end = 0b01111110;
 
@@ -72,13 +71,30 @@ int framebuilder(uint8_t* frame, int size)
     for (int i = 3; i < size; i++){
         frame[i+4] = i;
     }
+
+    uint8_t crc16_1 = 0;
+    uint8_t crc16_2 = 0;
+    uint16_t crc16 = gen_crc16(&frame[4],size);
+    // uint16_t crc16 = 0b1011001010100110;
+
+    crc16_1 = (uint8_t)(0b0000000011111111 & crc16);
+    crc16_2 = (uint8_t)(0b1111111100000000 & crc16)<<8;
+
+    // memcpy(&crc16_1,&crc16,1);
+    // memcpy(&crc16_2,&crc16+1,1);
+
+    Serial.printlnf("crc16 : %d",crc16);
+    Serial.printlnf("crc8_1 : %d",crc16_1);
+    Serial.printlnf("crc8_2 : %d",crc16_2);
+
     /***** METTRE LE RÉSULTAT DU CRC16 EN 2 BYTES ICI *****/
-    frame[size + 4] = 0xFF;   // CORALIE CE SONT LES 2 BYTES POUR STOCKER LE CRC16
-    frame[size + 5] = 0xFF;   // CORALIE CE SONT LES 2 BYTES POUR STOCKER LE CRC16
+    frame[size + 4] = crc16_1;   // CORALIE CE SONT LES 2 BYTES POUR STOCKER LE CRC16
+    frame[size + 5] = crc16_2;   // CORALIE CE SONT LES 2 BYTES POUR STOCKER LE CRC16
     /***** FIN DU RÉSULTAT DU CRC16 *****/
     frame[size + 6] = start;
 
     return size + 7;
+
 }
 
 void setup() {
@@ -224,4 +240,51 @@ void isr(){
         timer1 = millis();
         timer2 = millis();
     }
+}
+
+uint16_t gen_crc16(const uint8_t *data, uint16_t size)
+{
+    uint16_t out = 0;
+    int bits_read = 0, bit_flag;
+    /* Sanity check: */
+    if(data == NULL)
+        return 0;
+    while(size > 0)
+    {
+        bit_flag = out >> 15;
+
+        /* Get next bit: */
+        out <<= 1;
+        out |= (*data >> bits_read) & 1; // item a) work from the least significant bits
+
+        /* Increment bit counter: */
+        bits_read++;
+        if(bits_read > 7)
+        {
+            bits_read = 0;
+            data++;
+            size--;
+        }
+
+        /* Cycle check: */
+        if(bit_flag)
+            out ^= CRC16;
+    }
+    // item b) "push out" the last 16 bits
+    int i;
+    for (i = 0; i < 16; ++i) {
+        bit_flag = out >> 15;
+        out <<= 1;
+        if(bit_flag)
+            out ^= CRC16;
+    }
+
+    // item c) reverse the bits
+    uint16_t crc = 0;
+    i = 0x8000;
+    int j = 0x0001;
+    for (; i != 0; i >>=1, j <<= 1) {
+        if (i & out) crc |= j;
+    }
+    return crc;
 }
