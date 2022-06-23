@@ -77,15 +77,12 @@ int framebuilder(uint8_t* frame, int size)
     uint16_t crc16 = gen_crc16(&frame[4],size);
     // uint16_t crc16 = 0b1011001010100110;
 
-    crc16_1 = (uint8_t)(0b0000000011111111 & crc16);
-    crc16_2 = (uint8_t)(0b1111111100000000 & crc16)<<8;
+    crc16_1 = crc16 >> 8;
+    crc16_2 = crc16;
 
-    // memcpy(&crc16_1,&crc16,1);
-    // memcpy(&crc16_2,&crc16+1,1);
-
-    Serial.printlnf("crc16 : %d",crc16);
-    Serial.printlnf("crc8_1 : %d",crc16_1);
-    Serial.printlnf("crc8_2 : %d",crc16_2);
+    Serial.printlnf("crc16: %d", crc16);
+    Serial.printlnf("crc8_1: %d", crc16_1);
+    Serial.printlnf("crc8_2: %d", crc16_2);
 
     /***** METTRE LE RÉSULTAT DU CRC16 EN 2 BYTES ICI *****/
     frame[size + 4] = crc16_1;   // CORALIE CE SONT LES 2 BYTES POUR STOCKER LE CRC16
