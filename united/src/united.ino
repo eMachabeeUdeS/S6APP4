@@ -33,7 +33,7 @@ const uint8_t end = 0b01111110;
 // Charge utile maximale de 73 octets
 
 // Variables pour l'ISR de réception
-const int tRef = 5;
+const int tRef = 100;
 bool lastBit = true;           // On commence toujours en assumant que avant c'était un 0
 system_tick_t timer2 = 0;     // Temps avant, pour comparer et skipper des fronts montants inutiles
 system_tick_t timer1 = 0;
@@ -43,6 +43,7 @@ uint8_t byteToStore = 0b00000000;        // Octet à stocker
 // Variables pour la réception
 uint8_t receivedFrame[80] = {0};    // Trame reçue
 uint8_t frameCounter = 0;           // Position dans la trame
+bool newFrame = false;              // Si un nouveau frame est reçu
 
 volatile int counter = 0;
 unsigned long lastReport = 0;
@@ -85,8 +86,8 @@ int framebuilder(uint8_t* frame, int size)
     Serial.printlnf("crc8_2: %d", crc16_2);
 
     /***** METTRE LE RÉSULTAT DU CRC16 EN 2 BYTES ICI *****/
-    frame[size + 4] = crc16_1;   // CORALIE CE SONT LES 2 BYTES POUR STOCKER LE CRC16
-    frame[size + 5] = crc16_2;   // CORALIE CE SONT LES 2 BYTES POUR STOCKER LE CRC16
+    frame[size + 4] = crc16_1;
+    frame[size + 5] = crc16_2;
     /***** FIN DU RÉSULTAT DU CRC16 *****/
     frame[size + 6] = start;
 
@@ -170,10 +171,47 @@ void encoder(void *param) {
 }
 
 void decoder(void *param) {
+    uint8_t received_type_flags = 0;    // Type et flags reçus
+    uint8_t received_size = 0;          // Taille décodée
+    uint8_t receivedPayload[73] = {0};  // Payload reçu
+    bool valid = true;
     while (true) {
-        //pulseLength = pulseIn(D12, HIGH);
-        int a = 0;
-        a++;
+        WITH_LOCK(Serial){
+        if (newFrame){
+            if (receivedFrame[0] != preambule){
+                Serial.printlnf("Préambule invalide");
+                valid = false;
+            }
+            if (receivedFrame[1] != start){
+                Serial.printlnf("Start invalide");
+                valid = false;
+            }
+            received_type_flags = receivedFrame[2];
+            if (receivedFrame[3] <= 73){
+                received_size = receivedFrame[3];
+            }
+            else{
+                Serial.printlnf("Size invalide");
+                valid = false;
+            }
+            if (valid){
+                memcpy(receivedPayload, receivedFrame + 4, received_size);
+                uint16_t crc16 = gen_crc16(receivedPayload, received_size);
+                uint8_t crc16_1 = crc16 >> 8;
+                uint8_t crc16_2 = crc16;
+                if (crc16_1 != receivedFrame[received_size + 4]){
+                    Serial.printlnf("CRC16_1 non concordant, reçu: %d, devrait être: %d", receivedFrame[received_size + 4], crc16_1);
+                    valid = false;
+                }
+                if (crc16_2 != receivedFrame[received_size + 5]){
+                    Serial.printlnf("CRC16_2 non concordant, reçu: %d, devrait être: %d", receivedFrame[received_size + 5], crc16_2);
+                    valid = false;
+                }
+            }
+            if (valid) Serial.printlnf("Message reçu et valide");
+            newFrame = false;
+        }
+        }
         os_thread_yield();
     }
 }
@@ -217,6 +255,12 @@ void addBit(){
         byteToStore = 0b00000000;
         bitPosition = 0;
     }
+    
+    if (frameCounter == 80){
+        frameCounter = 0;
+        newFrame = true;
+    }
+    else newFrame = false;
 }
 
 void isr(){
