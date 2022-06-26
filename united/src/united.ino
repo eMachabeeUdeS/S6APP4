@@ -80,10 +80,11 @@ int framebuilder(uint8_t* frame, int size)
 
     crc16_1 = crc16 >> 8;
     crc16_2 = crc16;
-
-    Serial.printlnf("crc16: %d", crc16);
-    Serial.printlnf("crc8_1: %d", crc16_1);
-    Serial.printlnf("crc8_2: %d", crc16_2);
+    WITH_LOCK(Serial){
+    // Serial.printlnf("CRC16: %d", crc16);
+    Serial.printlnf("crc16_1 de la charge utile originale: %d", crc16_1);
+    Serial.printlnf("crc16_2 de la charge utile originale: %d", crc16_2);
+    }
 
     /***** METTRE LE RÉSULTAT DU CRC16 EN 2 BYTES ICI *****/
     frame[size + 4] = crc16_1;
@@ -182,13 +183,17 @@ void decoder(void *param) {
                 Serial.printlnf("Préambule invalide");
                 valid = false;
             }
+            else    Serial.printf("Préambule: %d || ", receivedFrame[0]);
             if (receivedFrame[1] != start){
                 Serial.printlnf("Start invalide");
                 valid = false;
             }
+            else    Serial.printf("Start: %d || ", receivedFrame[1]);
             received_type_flags = receivedFrame[2];
+            Serial.printf("Type flag: %d || ", receivedFrame[2]);
             if (receivedFrame[3] <= 73){
                 received_size = receivedFrame[3];
+                Serial.printf("Size: %d || ", received_size);
             }
             else{
                 Serial.printlnf("Size invalide");
@@ -196,6 +201,7 @@ void decoder(void *param) {
             }
             if (valid){
                 memcpy(receivedPayload, receivedFrame + 4, received_size);
+                Serial.printf("Payload[0]: %d || ", receivedPayload[0]);
                 uint16_t crc16 = gen_crc16(receivedPayload, received_size);
                 uint8_t crc16_1 = crc16 >> 8;
                 uint8_t crc16_2 = crc16;
@@ -203,10 +209,12 @@ void decoder(void *param) {
                     Serial.printlnf("CRC16_1 non concordant, reçu: %d, devrait être: %d", receivedFrame[received_size + 4], crc16_1);
                     valid = false;
                 }
+                else    Serial.printf("CRC16_1: %d || ", receivedFrame[received_size + 4]);
                 if (crc16_2 != receivedFrame[received_size + 5]){
                     Serial.printlnf("CRC16_2 non concordant, reçu: %d, devrait être: %d", receivedFrame[received_size + 5], crc16_2);
                     valid = false;
                 }
+                else    Serial.printf("CRC16_2: %d\n", receivedFrame[received_size + 5]);
             }
             if (valid) Serial.printlnf("Message reçu et valide");
             newFrame = false;
