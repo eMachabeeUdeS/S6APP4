@@ -10,9 +10,10 @@
 SYSTEM_THREAD(ENABLED);
 
 #define CRC16           0x8005
-#define INPUTPIN        D12
-#define OUTPUTPIN       D0
+#define INPUTPIN        D0
+#define OUTPUTPIN       D12
 #define MAX_FRAME_SIZE  80
+const bool test = false;
 
 void threadFunction(void *param);
 
@@ -91,6 +92,9 @@ int framebuilder(uint8_t* frame, int size)
     frame[size + 5] = crc16_2;
     /***** FIN DU RÉSULTAT DU CRC16 *****/
     frame[size + 6] = start;
+
+    // Ajout de l'erreur si on teste avec
+    if (test) frame[17] = frame[17] + 1;
 
     return size + 7;
 
