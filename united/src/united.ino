@@ -94,8 +94,9 @@ int framebuilder(uint8_t* frame, int size)
     frame[size + 6] = start;
 
     // Ajout de l'erreur si on teste avec
-    if (test) frame[17] = frame[17] + 1;
-
+    if (test){
+        frame[17] = frame[17] + 1;
+    }
     return size + 7;
 
 }
